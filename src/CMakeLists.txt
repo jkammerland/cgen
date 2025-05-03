@@ -1,33 +1,42 @@
+
+
 # Source-level CMake configuration
-set(CGEN_SOURCES
-  generator.cppm
+add_executable(${PROJECT_NAME})
+
+# Add main.cpp as regular source file
+target_sources(${PROJECT_NAME} PRIVATE
   main.cpp
 )
 
-# Define project binary
-add_executable(cgen ${CGEN_SOURCES})
+# Add modules with proper configuration
+target_sources(${PROJECT_NAME}
+  PUBLIC
+    FILE_SET CXX_MODULES 
+    BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
+    FILES generator.cppm
+)
 
-# Module compilation setup
-target_sources(cgen 
-  PUBLIC 
-    FILE_SET CXX_MODULES FILES
-      generator.cppm
+# Explicitly set C++ standard for the target
+set_target_properties(${PROJECT_NAME} PROPERTIES
+  CXX_STANDARD 23
+  CXX_STANDARD_REQUIRED ON
+  CXX_EXTENSIONS OFF
 )
 
 # Link dependencies
-target_link_libraries(cgen PRIVATE fmt::fmt)
+target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt)
 
 # Installation
-install(TARGETS cgen
-  EXPORT cgen-targets
+install(TARGETS ${PROJECT_NAME}
+  EXPORT ${PROJECT_NAME}-targets
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  FILE_SET CXX_MODULES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/cgen
+  FILE_SET CXX_MODULES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
 )
 
-install(EXPORT cgen-targets
-  FILE cgen-targets.cmake
-  NAMESPACE cgen::
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/cgen
+install(EXPORT ${PROJECT_NAME}-targets
+  FILE ${PROJECT_NAME}-targets.cmake
+  NAMESPACE ${PROJECT_NAME}::
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
 )

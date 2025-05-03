@@ -6,10 +6,15 @@ project({PROJECT_NAME}
   LANGUAGES CXX
 )
 
-# Set C++ standard to C++20
-set(CMAKE_CXX_STANDARD 20)
+message(STATUS "${{PROJECT_NAME}}:<${{PROJECT_VERSION}}>, using cmake:<${{CMAKE_VERSION}}>")
+
+# Set C++ standard to C++23
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Enable C++20 modules scanning globally
+set(CMAKE_CXX_SCAN_FOR_MODULES ON)
 
 # Allow for shared libraries
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)

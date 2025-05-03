@@ -9,7 +9,7 @@ module;
 #include <fmt/core.h>
 #include <fmt/format.h>
 
-export module cgen:generator;
+export module cgen.generator;
 
 namespace fs = std::filesystem;
 

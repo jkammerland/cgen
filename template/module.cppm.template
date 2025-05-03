@@ -1,19 +1,36 @@
+// C++20 Module implementation
 module;
 
+// Global module fragment - include headers here
 #include <string>
 #include <vector>
 
+// Module declaration
 export module {NAMESPACE}:{MODULE_NAME};
 
+// Module interface - all declarations that should be visible to importers
 export namespace {NAMESPACE} {{
     class {CLASS_NAME} {{
     public:
         {CLASS_NAME}();
-        ~{CLASS_NAME}();
+        ~{CLASS_NAME}() = default;
         
         // Add your class interface here
+        void doSomething();
         
     private:
         // Add your private members here
+        std::string m_name;
     }};
+}}
+
+// Module implementation - not exported, only visible in this module
+namespace {NAMESPACE} {{
+    {CLASS_NAME}::{CLASS_NAME}() : m_name("Default") {{
+        // Constructor implementation
+    }}
+    
+    void {CLASS_NAME}::doSomething() {{
+        // Method implementation
+    }}
 }}

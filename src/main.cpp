@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-import cgen:generator;
+import cgen.generator;
 
 namespace fs = std::filesystem;
 
