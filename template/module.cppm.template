@@ -1,0 +1,19 @@
+module;
+
+#include <string>
+#include <vector>
+
+export module {NAMESPACE}:{MODULE_NAME};
+
+export namespace {NAMESPACE} {{
+    class {CLASS_NAME} {{
+    public:
+        {CLASS_NAME}();
+        ~{CLASS_NAME}();
+        
+        // Add your class interface here
+        
+    private:
+        // Add your private members here
+    }};
+}}

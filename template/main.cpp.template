@@ -1,0 +1,11 @@
+#include <iostream>
+
+import {NAMESPACE}:{MODULE_NAME};
+
+int main(int argc, char* argv[]) {{
+    std::cout << "Hello from {PROJECT_NAME}!" << std::endl;
+    
+    // Your code here
+    
+    return 0;
+}}
