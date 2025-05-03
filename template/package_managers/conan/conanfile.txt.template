@@ -1,0 +1,6 @@
+[requires]
+{DEPENDENCIES}
+
+[generators]
+cmake_find_package
+cmake_paths
