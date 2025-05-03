@@ -1,12 +1,10 @@
-
+add_subdirectory(parser)
 
 # Source-level CMake configuration
 add_executable(${PROJECT_NAME})
 
 # Add main.cpp as regular source file
-target_sources(${PROJECT_NAME} PRIVATE
-  main.cpp
-)
+target_sources(${PROJECT_NAME} PRIVATE main.cpp)
 
 # Add modules with proper configuration
 target_sources(${PROJECT_NAME}
@@ -16,27 +14,11 @@ target_sources(${PROJECT_NAME}
     FILES generator.cppm
 )
 
-# Explicitly set C++ standard for the target
-set_target_properties(${PROJECT_NAME} PROPERTIES
-  CXX_STANDARD 23
-  CXX_STANDARD_REQUIRED ON
-  CXX_EXTENSIONS OFF
-)
-
 # Link dependencies
-target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt)
+cpmaddpackage("gh:jarro2783/cxxopts@3.2.0")
+target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt config-parser cxxopts::cxxopts)
 
-# Installation
+# Just install the executable without export
 install(TARGETS ${PROJECT_NAME}
-  EXPORT ${PROJECT_NAME}-targets
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  FILE_SET CXX_MODULES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
-)
-
-install(EXPORT ${PROJECT_NAME}-targets
-  FILE ${PROJECT_NAME}-targets.cmake
-  NAMESPACE ${PROJECT_NAME}::
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
 )

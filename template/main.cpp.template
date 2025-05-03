@@ -1,18 +1,6 @@
 #include <iostream>
-#include <string>
-#include <filesystem>
 
-// Import our module 
-import {NAMESPACE}:{MODULE_NAME};
-
-int main(int argc, char* argv[]) {{
+int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {{
     std::cout << "Hello from {PROJECT_NAME}!" << std::endl;
-    
-    // Create an instance of our class from the module
-    {NAMESPACE}::{CLASS_NAME} instance;
-    instance.doSomething();
-    
-    std::cout << "C++23 modules project ready!" << std::endl;
-    
     return 0;
 }}
