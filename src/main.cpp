@@ -3,9 +3,8 @@
 #include <fmt/core.h>
 #include <fmt/format.h>
 #include <string>
-
-import cgen.generator;
-import cgen.parser;
+#include <cgen/generator.h>
+#include <cgen/parser.h>
 
 int main(int argc, char *argv[]) {
   try {

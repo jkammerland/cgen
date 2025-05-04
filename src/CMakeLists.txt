@@ -1,22 +1,21 @@
-add_subdirectory(parser)
+add_subdirectory(from-config-generation)
 
 # Source-level CMake configuration
 add_executable(${PROJECT_NAME})
 
-# Add main.cpp as regular source file
-target_sources(${PROJECT_NAME} PRIVATE main.cpp)
-
-# Add modules with proper configuration
-target_sources(${PROJECT_NAME}
-  PUBLIC
-    FILE_SET CXX_MODULES 
-    BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
-    FILES generator.cppm
+# Add source files
+target_sources(${PROJECT_NAME} PRIVATE 
+  main.cpp
 )
 
 # Link dependencies
 cpmaddpackage("gh:jarro2783/cxxopts@3.2.0")
-target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt config-parser cxxopts::cxxopts)
+target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt from-config-generation cxxopts::cxxopts)
+
+# Include directories
+target_include_directories(${PROJECT_NAME} PUBLIC
+  ${CURRENT_ROOT_DIR}/include
+)
 
 # Just install the executable without export
 install(TARGETS ${PROJECT_NAME}

@@ -1,23 +1,20 @@
-cmake_minimum_required(VERSION 3.28 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
 
 project(cgen
   VERSION 0.1.0
   DESCRIPTION "C++ Project Generator"
   LANGUAGES CXX
 )
+set(${PROJECT_NAME}_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "Root directory of ${PROJECT_NAME}")
+set(CURRENT_ROOT_DIR ${${PROJECT_NAME}_ROOT_DIR})
 
 message(STATUS "${PROJECT_NAME}:<${PROJECT_VERSION}>, using cmake:<${CMAKE_VERSION}>")
 
-if(NOT ${CMAKE_EXPERIMENTAL_CXX_IMPORT_STD})
-  message(FATAL_ERROR "This project requires CMake with experimental C++ modules support.")
-endif()
-
-# Set C++ standard to C++20
+# Set C++ standard to C++23
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_CXX_SCAN_FOR_MODULES ON)
-
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/get_cpm.cmake)
 get_cpm("0.40.8" "78ba32abdf798bc616bab7c73aac32a17bbd7b06ad9e26a6add69de8f3ae4791")
