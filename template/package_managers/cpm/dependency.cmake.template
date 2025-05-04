@@ -1,0 +1,3 @@
+include(cmake/get_cpm.cmake)
+# CPM.cmake dependencies
+{CPM_DEPENDENCIES}

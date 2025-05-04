@@ -1,0 +1,5 @@
+# Set up CPM package manager
+include(cmake/get_cpm.cmake)
+
+# Add dependencies using CPM
+{CPM_PACKAGES}

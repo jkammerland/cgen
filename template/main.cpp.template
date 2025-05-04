@@ -1,6 +1,6 @@
-#include <iostream>
+#include <fmt/core.h>
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {{
-    std::cout << "Hello from {PROJECT_NAME}!" << std::endl;
+    fmt::print("Hello from {PROJECT_NAME}!\n");
     return 0;
 }}

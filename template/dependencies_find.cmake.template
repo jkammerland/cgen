@@ -1,0 +1,2 @@
+# Find required packages
+find_package(fmt 9.1.0 REQUIRED)
