@@ -1,17 +1,17 @@
 # Source-level CMake configuration
-add_library(${PROJECT_NAME})
+add_executable(${PROJECT_NAME})
 
 # Add source files
 target_sources(${PROJECT_NAME}
   PRIVATE
-@SOURCE_FILES@
-@MODULE_FILES@
+    main.cpp
+    # Add more source files here
 )
 
 # Add include directories
 target_include_directories(${PROJECT_NAME}
   PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
+    $<BUILD_INTERFACE:${CURRENT_ROOT_DIR}/include>
     $<INSTALL_INTERFACE:include>
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
@@ -21,7 +21,6 @@ target_include_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
   PRIVATE
     fmt::fmt
-    GTest::gtest
 )
 
 @CMAKE_OPTIONS@
@@ -29,8 +28,5 @@ target_link_libraries(${PROJECT_NAME}
 
 # Installation
 install(TARGETS ${PROJECT_NAME}
-  EXPORT ${PROJECT_NAME}-targets
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )

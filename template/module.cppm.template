@@ -1,7 +1,0 @@
-// C++20 Module implementation
-module;
-
-// Global module fragment - include headers here
-
-// Module declaration
-export module @NAMESPACE@.@MODULE_NAME@;

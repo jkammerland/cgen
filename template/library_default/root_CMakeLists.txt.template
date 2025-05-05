@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.28 FATAL_ERROR)
 
+@USE_VCPKG@
+@USE_CONAN@
+@USE_CPM@
+
 project(@PROJECT_NAME@
   VERSION @PROJECT_VERSION@
   DESCRIPTION "@PROJECT_DESCRIPTION@"
@@ -18,7 +22,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Find dependencies using find_package
 find_package(fmt REQUIRED)
-find_package(GTest REQUIRED)
 
 # Add subdirectories
 add_subdirectory(src)
@@ -26,12 +29,6 @@ add_subdirectory(src)
 # Package configuration
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
-
-# Installation targets
-install(DIRECTORY include/@PROJECT_NAME@
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-  FILES_MATCHING PATTERN "*.h"
-)
 
 # Generate and install package configuration files
 configure_package_config_file(

@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.28 FATAL_ERROR)
 
+@USE_VCPKG@
+@USE_CONAN@
+@USE_CPM@
+
 project(@PROJECT_NAME@
   VERSION @PROJECT_VERSION@
   DESCRIPTION "@PROJECT_DESCRIPTION@"
@@ -16,39 +20,18 @@ set(CMAKE_CXX_STANDARD @CPP_STANDARD@)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Find dependencies
-@DEPENDENCIES@
+# Find dependencies using find_package - add more here
+find_package(fmt CONFIG REQUIRED)
 
 # Add subdirectories
 add_subdirectory(src)
 
 # Package configuration
 include(GNUInstallDirs)
-include(CMakePackageConfigHelpers)
 
 # Installation targets
-install(DIRECTORY include/@PROJECT_NAME@
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-  FILES_MATCHING PATTERN "*.h"
-)
-
-# Generate and install package configuration files
-configure_package_config_file(
-  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/@PROJECT_NAME@-config.cmake.in
-  ${CMAKE_CURRENT_BINARY_DIR}/@PROJECT_NAME@-config.cmake
-  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/@PROJECT_NAME@
-)
-
-write_basic_package_version_file(
-  ${CMAKE_CURRENT_BINARY_DIR}/@PROJECT_NAME@-config-version.cmake
-  VERSION ${PROJECT_VERSION}
-  COMPATIBILITY SameMajorVersion
-)
-
-install(FILES
-  ${CMAKE_CURRENT_BINARY_DIR}/@PROJECT_NAME@-config.cmake
-  ${CMAKE_CURRENT_BINARY_DIR}/@PROJECT_NAME@-config-version.cmake
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/@PROJECT_NAME@
+install(TARGETS ${PROJECT_NAME}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
 # CPack configuration
