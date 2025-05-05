@@ -153,16 +153,18 @@ std::optional<ProjectConfig> parse_config(const toml::table &table) {
 
     // Parse package manager templates
     if (auto pkg_templates = templates->get_as<toml::table>("package_managers")) {
-      if (auto conan = pkg_templates->get_as<bool>("conan_config"))
-        config.templates.package_managers.conan_config = conan->get();
+      std::vector<std::pair<std::string, bool*>> package_manager_keys = {
+          {"conan_config", &config.templates.package_managers.conan_config},
+          {"vcpkg_config", &config.templates.package_managers.vcpkg_config},
+          {"xrepo_config", &config.templates.package_managers.xrepo_config},
+      };
 
-      if (auto vcpkg = pkg_templates->get_as<bool>("vcpkg_config"))
-        config.templates.package_managers.vcpkg_config = vcpkg->get();
-
-      if (auto xrepo = pkg_templates->get_as<bool>("xrepo_config"))
-        config.templates.package_managers.xrepo_config = xrepo->get();
-    }
-
+      for (const auto& [key, member] : package_manager_keys) {
+          if (auto value = pkg_templates->get_as<bool>(key)) {
+              *member = value->get();
+          }
+      }
+  }
     // Parse custom templates
     if (auto custom = templates->get_as<toml::table>("custom")) {
       for (auto &&[key, value] : *custom) {
