@@ -1,438 +1,47 @@
-#include <cgen/generator.h>
-#include <fmt/core.h>
-#include <fmt/format.h>
-#include <fstream>
-#include <regex>
-#include <stdexcept>
+#include "cgen/generator.h"
+#include <memory>
+#include <iostream>
 
 namespace cgen {
 
-// Constructor taking a project configuration
-Generator::Generator(const ProjectConfig &config) : m_config(config) {
-  // Set template root path
-  m_template_dir = std::filesystem::path("/home/jonkam/Programming/cpp/cgen/template");
-}
-
-// Generate project with the given configuration
-bool Generator::generate(const std::filesystem::path &output_dir) {
-  try {
-    m_output_dir = output_dir;
-
-    // Create output directory if it doesn't exist
-    std::filesystem::create_directories(m_output_dir);
-
-    // Create project structure
-    create_directory_structure();
-
-    // Generate project files based on templates
-    generate_project_files();
-
-    fmt::print("Project '{}' created successfully at: {}\n",
-               m_config.project.name, m_output_dir.string());
-
-    return true;
-  } catch (const std::exception &e) {
-    fmt::print(stderr, "Error generating project: {}\n", e.what());
-    return false;
-  }
-}
-
-// Create the basic directory structure for the project
-void Generator::create_directory_structure() {
-  // Create main directories
-  std::filesystem::create_directories(m_output_dir / "src");
-  std::filesystem::create_directories(m_output_dir / "include" /
-                                      m_config.project.name);
-  std::filesystem::create_directories(m_output_dir / "cmake");
-
-  // Create test directory if testing is enabled
-  if (m_config.build.enable_testing) {
-    std::filesystem::create_directories(m_output_dir / "test");
-  }
-  
-  // Copy necessary cmake files
-  if (m_config.package_managers.cpm) {
-    // Copy get_cpm.cmake file
-    std::filesystem::path cpm_source = std::filesystem::path("/home/jonkam/Programming/cpp/cgen/cmake/get_cpm.cmake");
-    if (std::filesystem::exists(cpm_source)) {
-      std::filesystem::copy_file(
-        cpm_source, 
-        m_output_dir / "cmake" / "get_cpm.cmake",
-        std::filesystem::copy_options::overwrite_existing
-      );
-      fmt::print("Copied: cmake/get_cpm.cmake\n");
-    } else {
-      throw std::runtime_error("Could not find get_cpm.cmake file for copying");
-    }
-  }
-}
-
-// Generate project files based on templates
-void Generator::generate_project_files() {
-  // Generate root CMakeLists.txt
-  if (m_config.templates.cmake_root) {
-    generate_from_template(m_template_dir / "root_CMakeLists.txt.template",
-                           m_output_dir / "CMakeLists.txt");
-  }
-
-  // Generate src CMakeLists.txt based on project type
-  if (m_config.templates.cmake_src) {
-    if (m_config.project.type.type == "binary") {
-      generate_from_template(m_template_dir /
-                                 "binary/src/CMakeLists.txt.template",
-                             m_output_dir / "src/CMakeLists.txt");
-    } else if (m_config.project.type.type == "library") {
-      generate_from_template(m_template_dir /
-                                 "library/src/CMakeLists.txt.template",
-                             m_output_dir / "src/CMakeLists.txt");
-    }
-  }
-
-  // Generate main.cpp if this is a binary project
-  if (m_config.templates.main && m_config.project.type.type == "binary") {
-    generate_from_template(m_template_dir / "main.cpp.template",
-                           m_output_dir / "src/main.cpp");
-  }
-
-  // Generate cmake config
-  if (m_config.templates.cmake_config) {
-    generate_from_template(
-        m_template_dir / "config.cmake.in.template",
-        m_output_dir / "cmake" /
-            fmt::format("{}-config.cmake.in", m_config.project.name));
-  }
-
-  // Generate package manager config files
-  generate_package_manager_files();
-
-  // Generate custom templates
-  for (const auto &[name, custom_tpl] : m_config.templates.custom) {
-    generate_from_template(m_template_dir / custom_tpl.source,
-                           m_output_dir / custom_tpl.destination);
-  }
-}
-
-// Generate package manager files
-void Generator::generate_package_manager_files() {
-  // Conan
-  if (m_config.package_managers.conan &&
-      m_config.templates.package_managers.conan_config) {
-    generate_from_template(
-        m_template_dir / "package_managers/conan/conanfile.txt.template",
-        m_output_dir / "conanfile.txt");
-  }
-
-  // vcpkg
-  if (m_config.package_managers.vcpkg &&
-      m_config.templates.package_managers.vcpkg_config) {
-    generate_from_template(m_template_dir /
-                               "package_managers/vcpkg/vcpkg.json.template",
-                           m_output_dir / "vcpkg.json");
-  }
-
-  // xrepo
-  if (m_config.package_managers.xrepo &&
-      m_config.templates.package_managers.xrepo_config) {
-    generate_from_template(m_template_dir /
-                               "package_managers/xrepo/xmake.lua.template",
-                           m_output_dir / "xmake.lua");
-  }
-}
-
-// Read a file into a string
-std::string Generator::read_file(const std::filesystem::path &path) {
-  std::ifstream file(path);
-  if (!file.is_open()) {
-    throw std::runtime_error(
-        fmt::format("Failed to open file: {}", path.string()));
-  }
-
-  std::string content((std::istreambuf_iterator<char>(file)),
-                      std::istreambuf_iterator<char>());
-  return content;
-}
-
-// Write string to a file
-void Generator::write_file(const std::filesystem::path &path,
-                const std::string &content) {
-  std::filesystem::create_directories(path.parent_path());
-
-  std::ofstream file(path);
-  if (!file.is_open()) {
-    throw std::runtime_error(
-        fmt::format("Failed to create file: {}", path.string()));
-  }
-
-  file << content;
-}
-
-// Format a template string with project configuration
-std::string Generator::format_template(const std::string &template_content) {
-  std::string result = template_content;
-
-  // Basic project information
-  result = std::regex_replace(result, std::regex("\\{PROJECT_NAME\\}"),
-                              m_config.project.name);
-  result = std::regex_replace(result, std::regex("\\{PROJECT_VERSION\\}"),
-                              m_config.project.version);
-  result = std::regex_replace(result, std::regex("\\{PROJECT_DESCRIPTION\\}"),
-                              m_config.project.description);
-  result = std::regex_replace(result, std::regex("\\{NAMESPACE\\}"),
-                              m_config.project.namespace_name);
-  result = std::regex_replace(result, std::regex("\\{PROJECT_VENDOR\\}"),
-                              m_config.project.vendor);
-  result = std::regex_replace(result, std::regex("\\{PROJECT_CONTACT\\}"),
-                              m_config.project.contact);
-
-  // C++ standard
-  result = std::regex_replace(result, std::regex("\\{CPP_STANDARD\\}"),
-                              m_config.build.cpp_standard);
-
-  // Project kind
-  std::string project_kind =
-      m_config.project.type.type == "binary" ? "binary" : "shared";
-  result = std::regex_replace(result, std::regex("\\{PROJECT_KIND\\}"),
-                              project_kind);
-
-  // Handle dependencies for different templates
-  if (result.find("{DEPENDENCIES}") != std::string::npos) {
-    std::string deps;
-
-    // For root CMakeLists.txt
-    if (result.find("# Find dependencies") != std::string::npos) {
-      if (m_config.package_managers.cpm) {
-        deps = read_file(m_template_dir / "dependencies_cpm.cmake.template");
-      } else {
-        deps = read_file(m_template_dir / "dependencies_find.cmake.template");
-      }
-      result = std::regex_replace(result, std::regex("\\{DEPENDENCIES\\}"), deps);
-    }
-    // For src/CMakeLists.txt with target_link_libraries
-    else if (result.find("target_link_libraries") != std::string::npos) {
-      deps = "    fmt\n"; // Simplified to just hardcode "fmt" for now
-      
-      result = std::regex_replace(result, std::regex("\\{DEPENDENCIES\\}"), deps);
-    }
-    // For Conan template
-    else if (result.find("[requires]") != std::string::npos) {
-      for (const auto &[name, dep] : m_config.dependencies.packages) {
-        if (!dep.version.empty()) {
-          deps += fmt::format("{}/{}\n", name, dep.version);
-        } else {
-          deps += fmt::format("{}/latest\n", name);
-        }
-      }
-      result =
-          std::regex_replace(result, std::regex("\\{DEPENDENCIES\\}"), deps);
-    }
-    // For vcpkg template
-    else if (result.find("\"dependencies\"") != std::string::npos) {
-      int i = 0;
-      for (const auto &[name, dep] : m_config.dependencies.packages) {
-        if (i > 0)
-          deps += ",\n";
-
-        if (dep.version.empty()) {
-          deps += fmt::format("    \"{}\"", name);
-        } else {
-          deps +=
-              fmt::format("    {{ \"name\": \"{}\", \"version>=\": \"{}\" }}",
-                          name, dep.version);
-        }
-        i++;
-      }
-      result =
-          std::regex_replace(result, std::regex("\\{DEPENDENCIES\\}"), deps);
-    }
-    // For xrepo template
-    else if (result.find("set_project") != std::string::npos) {
-      for (const auto &[name, dep] : m_config.dependencies.packages) {
-        if (dep.version.empty()) {
-          deps += fmt::format("add_requires(\"{}\")\n", name);
-        } else {
-          deps += fmt::format("add_requires(\"{} {}\")\n", name, dep.version);
-        }
-      }
-      result =
-          std::regex_replace(result, std::regex("\\{DEPENDENCIES\\}"), deps);
-
-      // Handle package dependencies for xrepo
-      std::string pkg_deps;
-      for (const auto &[name, _] : m_config.dependencies.packages) {
-        pkg_deps += fmt::format("    add_packages(\"{}\")\n", name);
-      }
-      result = std::regex_replace(
-          result, std::regex("\\{PACKAGE_DEPENDENCIES\\}"), pkg_deps);
-    }
-  }
-
-  // Handle CMake options
-  if (result.find("{CMAKE_OPTIONS}") != std::string::npos) {
-    std::string options;
-    for (const auto &[option, value] : m_config.build.cmake_options) {
-      options += fmt::format("set({} {})\n", option, value ? "ON" : "OFF");
-    }
-    result = std::regex_replace(result, std::regex("\\{CMAKE_OPTIONS\\}"),
-                                options);
-  }
-
-  // Handle CMake defines
-  if (result.find("{CMAKE_DEFINES}") != std::string::npos) {
-    std::string defines;
-    if (!m_config.build.cmake_defines.empty()) {
-      defines = "target_compile_definitions(${PROJECT_NAME} PRIVATE\n";
-
-      for (const auto &[define, value] : m_config.build.cmake_defines) {
-        if (value.empty()) {
-          defines += fmt::format("  {}\n", define);
-        } else {
-          defines += fmt::format("  {}={}\n", define, value);
-        }
-      }
-
-      defines += ")";
-    }
-    result = std::regex_replace(
-        result,
-        std::regex("# Add compile definitions[\\s\\S]*?\\{CMAKE_DEFINES\\}"),
-        defines);
-  }
-  
-  // A simpler approach - directly fix specific patterns we've identified
-  
-  // Fix ${projectname} -> ${PROJECT_NAME}
-  std::string project_name = m_config.project.name;
-  result = std::regex_replace(result, std::regex("\\$\\{" + project_name + "\\}"), "${PROJECT_NAME}");
-  
-  // Fix the message status line with project name and version
-  result = std::regex_replace(result, 
-      std::regex("message\\(STATUS \"\\$\\{PROJECT_NAME\\}:<\\$\\{\\d+\\}\\.\\d+\\.\\d+>\","), 
-      "message(STATUS \"${PROJECT_NAME}:<${PROJECT_VERSION}>\",");
-  
-  // Handle other message status patterns
-  result = std::regex_replace(result, 
-      std::regex("message\\(STATUS \"\\$\\{PROJECT_NAME\\}:<\\$\\{\\d+\\}\\.\\d+>\","), 
-      "message(STATUS \"${PROJECT_NAME}:<${PROJECT_VERSION}>\",");
-  
-  // Also try direct version value pattern
-  result = std::regex_replace(result, 
-      std::regex("message\\(STATUS \"\\$\\{PROJECT_NAME\\}:<\\$\\{\\d+\\}\\..+?>\","), 
-      "message(STATUS \"${PROJECT_NAME}:<${PROJECT_VERSION}>\",");
-  
-  // Fix ${projectname_ROOT_DIR} -> ${PROJECT_NAME_ROOT_DIR}
-  result = std::regex_replace(result, std::regex("\\$\\{" + project_name + "_ROOT_DIR\\}"), "${PROJECT_NAME_ROOT_DIR}");
-  
-  // Direct text replacement approach for version-related issues
-  
-  // Replace message line directly with hand-crafted text
-  if (result.find("message(STATUS") != std::string::npos) {
-    std::string msg_pattern = "message\\(STATUS \"[^\"]*\".*";
-    std::string msg_replacement = fmt::format(
-      "message(STATUS \"{}:<{}>, using cmake:${{CMAKE_VERSION}}\")",
-      "${PROJECT_NAME}", "${PROJECT_VERSION}"
-    );
-    result = std::regex_replace(result, std::regex(msg_pattern), msg_replacement);
-  }
-  
-  // Fix VERSION lines directly
-  result = std::regex_replace(result, 
-    std::regex("VERSION\\s+\\$\\{\\d+\\}(\\.\\d+)*"),
-    fmt::format("VERSION {}", "${PROJECT_VERSION}")
-  );
-  
-  // Specifically fix write_basic_package_version_file 
-  result = std::regex_replace(result, 
-    std::regex("write_basic_package_version_file\\([^)]*VERSION\\s+[^\\n]*"),
-    "write_basic_package_version_file(\n  ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake\n  VERSION ${PROJECT_VERSION}"
-  );
+// Helper function to create a new project 
+bool create_project(
+    std::unique_ptr<ConfigParser> parser,
+    const std::filesystem::path& templateDir,
+    const std::filesystem::path& outputDir
+) {
+    auto templateManager = std::make_unique<TemplateManager>(templateDir);
+    templateManager->loadTemplates();
     
-  // Fix CPACK_PACKAGE_VERSION line specifically
-  result = std::regex_replace(result, 
-    std::regex("set\\(CPACK_PACKAGE_VERSION.*?\\)"), 
-    "set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})"
-  );
-  
-  // Fix direct references like $project_name -> ${PROJECT_NAME}
-  result = std::regex_replace(result, std::regex("\\$" + project_name), "${PROJECT_NAME}");
-  
-  // Fix references in targets
-  result = std::regex_replace(result, std::regex("TARGETS\\s+\\$\\{" + project_name + "\\}"), "TARGETS ${PROJECT_NAME}");
-  result = std::regex_replace(result, std::regex("EXPORT\\s+\\$\\{" + project_name + "\\}-targets"), "EXPORT ${PROJECT_NAME}-targets");
-  
-  // Fix any remaining $variable without braces
-  std::regex dollar_var_pattern("\\$(\\w+)");
-  std::string processed_result;
-  std::string::const_iterator search_start(result.cbegin());
-  std::smatch match;
-  
-  while (std::regex_search(search_start, result.cend(), match, dollar_var_pattern)) {
-    processed_result.append(match.prefix());
-    processed_result.append(fmt::format("${{{}}}", match[1].str()));
-    search_start = match.suffix().first;
-  }
-  
-  if (!processed_result.empty()) {
-    result = processed_result;
-  }
-
-  // Handle module files
-  if (result.find("{MODULE_FILES}") != std::string::npos) {
-    std::string module_files;
-    if (m_config.build.use_modules) {
-      module_files = "target_sources(${PROJECT_NAME}\n";
-      module_files += "  PUBLIC\n";
-      module_files += "    FILE_SET CXX_MODULES \n";
-      module_files += "    BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}\n";
-      module_files += "    FILES\n";
-      module_files += "      # Add module files here\n";
-      module_files += ")";
-    }
-    result = std::regex_replace(result, std::regex("\\{MODULE_FILES\\}"),
-                                module_files);
-  }
-
-  // Handle source files (library only)
-  if (result.find("{SOURCE_FILES}") != std::string::npos) {
-    std::string source_files = "    # Add source files here";
-    result = std::regex_replace(result, std::regex("\\{SOURCE_FILES\\}"),
-                                source_files);
-  }
-
-  // Handle find dependencies for cmake config
-  if (result.find("{FIND_DEPENDENCIES}") != std::string::npos) {
-    std::string find_deps;
-    for (const auto &[name, dep] : m_config.dependencies.packages) {
-      if (dep.required) {
-        find_deps += fmt::format("find_dependency({} REQUIRED)\n", name);
-      }
-    }
-    result = std::regex_replace(result, std::regex("\\{FIND_DEPENDENCIES\\}"),
-                                find_deps);
-  }
-
-  return result;
+    auto generator = std::make_unique<ProjectGenerator>(
+        std::move(parser),
+        std::move(templateManager)
+    );
+    
+    generator->setOutputDirectory(outputDir);
+    return generator->generate();
 }
 
-// Generate a file from a template
-void Generator::generate_from_template(const std::filesystem::path &template_path,
-                            const std::filesystem::path &output_path) {
-  // Read template file
-  std::string template_content = read_file(template_path);
-
-  // Format template with project configuration
-  std::string formatted_content = format_template(template_content);
-
-  // Write output file
-  write_file(output_path, formatted_content);
-
-  fmt::print("Generated: {}\n", output_path.string());
-}
-
-// Helper function to create a new project
-bool create_project(const ProjectConfig &config, const std::filesystem::path &output_dir) {
-  fmt::print("Creating project: {}\n", config.project.name);
-  Generator generator(config);
-  return generator.generate(output_dir);
+// Factory function to create a project generator from a config file
+std::unique_ptr<ProjectGenerator> create_project_generator(
+    const std::filesystem::path& configPath,
+    const std::filesystem::path& templateDir
+) {
+    auto parser = std::make_unique<TomlConfigParser>();
+    try {
+        parser->parseFile(configPath);
+    } catch (const std::exception& e) {
+        std::cerr << "Failed to parse config file: " << e.what() << std::endl;
+        return nullptr;
+    }
+    
+    auto templateManager = std::make_unique<TemplateManager>(templateDir);
+    templateManager->loadTemplates();
+    
+    return std::make_unique<ProjectGenerator>(
+        std::move(parser),
+        std::move(templateManager)
+    );
 }
 
 } // namespace cgen
