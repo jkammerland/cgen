@@ -1,6 +1,6 @@
 #include <fmt/core.h>
 
-int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {{
-    fmt::print("Hello from {PROJECT_NAME}!\n");
+int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[]) {
+    fmt::print("Hello from @PROJECT_NAME@!\n");
     return 0;
-}}
+}

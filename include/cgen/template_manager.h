@@ -90,6 +90,12 @@ public:
     // Replace placeholders in a template with values
     std::string processTemplate(const Template& tmpl, 
                                const std::unordered_map<std::string, std::string>& values) const;
+                               
+    // Special case handlers for template processing
+    std::string handleFmtSpecialCase(const std::string& content,
+                                    const std::unordered_map<std::string, std::string>& values) const;
+    std::string handleCMakeSpecialCase(const std::string& content) const;
+    std::string restoreCMakeVariables(const std::string& content) const;
 
     // Get all templates
     const TemplateSet& getTemplates() const { return templates; }

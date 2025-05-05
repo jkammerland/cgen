@@ -167,11 +167,83 @@ std::unordered_map<std::string, std::string> TomlConfigParser::getPlaceholderVal
         std::string upperKey = key;
         std::transform(upperKey.begin(), upperKey.end(), upperKey.begin(), ::toupper);
         placeholders[upperKey] = formatConfigEntry(entry);
+        
+        // Special case for CPP_STANDARD -> CMAKE_CXX_STANDARD
+        if (upperKey == "CPP_STANDARD") {
+            placeholders["CMAKE_CXX_STANDARD"] = formatConfigEntry(entry);
+        }
     }
 
     // Special processing for dependencies
     const auto& dependencies = getGroup(ConfigGroup::Dependencies);
     std::stringstream dependenciesSS;
+    std::stringstream findPackagesSS;
+    std::stringstream cpmPackagesSS;
+    std::stringstream vcpkgPackagesSS;
+    std::stringstream linkDependenciesSS;
+    
+    for (const auto& [name, entry] : dependencies) {
+        if (entry.type == ConfigEntry::Type::Dictionary) {
+            const auto& dict = entry.asDict();
+            auto versionIt = dict.find("version");
+            std::string version = versionIt != dict.end() ? formatConfigEntry(versionIt->second) : "";
+            
+            // For linking, just use the name
+            linkDependenciesSS << "  " << name << "\n";
+            
+            // Add to find_package format (proper CMake)
+            findPackagesSS << "find_package(" << name;
+            if (!version.empty()) {
+                findPackagesSS << " " << version;
+            }
+            findPackagesSS << " REQUIRED)\n";
+            
+            // Add to CPM format
+            cpmPackagesSS << "CPMAddPackage(\n";
+            cpmPackagesSS << "  NAME " << name << "\n";
+            if (!version.empty()) {
+                cpmPackagesSS << "  VERSION " << version << "\n";
+            }
+            
+            // Add git URL if available
+            auto gitIt = dict.find("git");
+            if (gitIt != dict.end()) {
+                cpmPackagesSS << "  GITHUB_REPOSITORY " << formatConfigEntry(gitIt->second) << "\n";
+            } else {
+                // If no git repo but it's a common package, provide a GitHub URL
+                if (name == "fmt") {
+                    cpmPackagesSS << "  GITHUB_REPOSITORY fmtlib/fmt\n";
+                } else if (name == "gtest" || name == "googletest") {
+                    cpmPackagesSS << "  GITHUB_REPOSITORY google/googletest\n";
+                } else if (name == "catch2") {
+                    cpmPackagesSS << "  GITHUB_REPOSITORY catchorg/Catch2\n";
+                } else if (name == "nlohmann_json") {
+                    cpmPackagesSS << "  GITHUB_REPOSITORY nlohmann/json\n";
+                } else if (name == "spdlog") {
+                    cpmPackagesSS << "  GITHUB_REPOSITORY gabime/spdlog\n";
+                }
+            }
+            
+            // Add URL if available
+            auto urlIt = dict.find("url");
+            if (urlIt != dict.end()) {
+                cpmPackagesSS << "  URL " << formatConfigEntry(urlIt->second) << "\n";
+            }
+            
+            cpmPackagesSS << ")\n\n";
+            
+            // Add to vcpkg format
+            vcpkgPackagesSS << "    \"" << name << "\": \"" << version << "\",\n";
+        } else {
+            // Simple dependency name only
+            linkDependenciesSS << "  " << name << "\n";
+            findPackagesSS << "find_package(" << name << " REQUIRED)\n";
+            cpmPackagesSS << "CPMAddPackage(\n  NAME " << name << "\n)\n\n";
+            vcpkgPackagesSS << "    \"" << name << "\": \"*\",\n";
+        }
+    }
+    
+    // For backward compatibility, also add the old-style dependencies
     for (const auto& [name, entry] : dependencies) {
         if (entry.type == ConfigEntry::Type::Dictionary) {
             const auto& dict = entry.asDict();
@@ -185,7 +257,27 @@ std::unordered_map<std::string, std::string> TomlConfigParser::getPlaceholderVal
             dependenciesSS << name << "\n";
         }
     }
+    
     placeholders["DEPENDENCIES"] = dependenciesSS.str();
+    placeholders["FIND_PACKAGES"] = findPackagesSS.str();
+    placeholders["CPM_PACKAGES"] = cpmPackagesSS.str();
+    placeholders["VCPKG_PACKAGES"] = vcpkgPackagesSS.str();
+    placeholders["LINK_DEPENDENCIES"] = linkDependenciesSS.str();
+
+    // Project type handling
+    auto typeEntry = getEntry(ConfigGroup::ProjectInfo, "type");
+    if (typeEntry && typeEntry->type == ConfigEntry::Type::String) {
+        std::string type = typeEntry->asString();
+        if (type == "library") {
+            placeholders["PROJECT_KIND"] = "library";
+        } else if (type == "header_only") {
+            placeholders["PROJECT_KIND"] = "headeronly";
+        } else {
+            placeholders["PROJECT_KIND"] = "binary";
+        }
+    } else {
+        placeholders["PROJECT_KIND"] = "binary";
+    }
 
     // CMake options
     const auto& cmakeOptions = getGroup(ConfigGroup::CMake);

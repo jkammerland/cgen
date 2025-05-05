@@ -1,5 +1,5 @@
 [requires]
-{DEPENDENCIES}
+@DEPENDENCIES@
 
 [generators]
 cmake_find_package

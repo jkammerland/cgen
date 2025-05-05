@@ -4,12 +4,9 @@ add_library(${PROJECT_NAME})
 # Add source files
 target_sources(${PROJECT_NAME}
   PRIVATE
-    # Add source files here
-{SOURCE_FILES}
+@SOURCE_FILES@
+@MODULE_FILES@
 )
-
-# Add module files if enabled
-{MODULE_FILES}
 
 # Add include directories
 target_include_directories(${PROJECT_NAME}
@@ -23,13 +20,12 @@ target_include_directories(${PROJECT_NAME}
 # Link dependencies
 target_link_libraries(${PROJECT_NAME}
   PRIVATE
-{DEPENDENCIES}
+    fmt::fmt
+    GTest::gtest
 )
 
-{CMAKE_OPTIONS}
-
-# Add compile definitions
-{CMAKE_DEFINES}
+@CMAKE_OPTIONS@
+@CMAKE_DEFINES@
 
 # Installation
 install(TARGETS ${PROJECT_NAME}

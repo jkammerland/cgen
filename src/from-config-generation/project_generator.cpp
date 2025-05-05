@@ -69,51 +69,138 @@ void ProjectGenerator::createDirectoryStructure() {
 }
 
 void ProjectGenerator::generateProjectFiles() {
-    auto placeholders = configParser->getPlaceholderValues();
     auto& templates = templateManager->getTemplates();
     auto type = getProjectType();
 
-    // Generate root CMakeLists.txt
-    auto rootTemplate = templates.findByName("root_CMakeLists.txt");
-    if (rootTemplate) {
-        processAndWriteTemplate(*rootTemplate, outputDir / "CMakeLists.txt");
-    }
-
-    // Generate src CMakeLists.txt based on project type
-    auto srcTemplate = templates.findByName("src_CMakeLists.txt");
-    if (srcTemplate) {
-        processAndWriteTemplate(*srcTemplate, outputDir / "src" / "CMakeLists.txt");
-    }
-
-    // Generate type-specific templates
-    if (type == ProjectType::Binary) {
-        // Generate main.cpp
-        auto mainTemplate = templates.findByName("main.cpp");
-        if (mainTemplate) {
-            processAndWriteTemplate(*mainTemplate, outputDir / "src" / "main.cpp");
+    // Check template options
+    bool generateMain = true;
+    bool generateCMakeRoot = true;
+    bool generateCMakeSrc = true;
+    bool generateCMakeConfig = true;
+    
+    // Get template configuration if it exists
+    auto templateConfig = configParser->getGroup(ConfigGroup::Templates);
+    if (!templateConfig.empty()) {
+        auto mainOpt = configParser->getEntry(ConfigGroup::Templates, "main");
+        if (mainOpt && mainOpt->type == ConfigEntry::Type::Boolean) {
+            generateMain = mainOpt->asBool();
         }
+        
+        auto cmakeRootOpt = configParser->getEntry(ConfigGroup::Templates, "cmake_root");
+        if (cmakeRootOpt && cmakeRootOpt->type == ConfigEntry::Type::Boolean) {
+            generateCMakeRoot = cmakeRootOpt->asBool();
+        }
+        
+        auto cmakeSrcOpt = configParser->getEntry(ConfigGroup::Templates, "cmake_src");
+        if (cmakeSrcOpt && cmakeSrcOpt->type == ConfigEntry::Type::Boolean) {
+            generateCMakeSrc = cmakeSrcOpt->asBool();
+        }
+        
+        auto cmakeConfigOpt = configParser->getEntry(ConfigGroup::Templates, "cmake_config");
+        if (cmakeConfigOpt && cmakeConfigOpt->type == ConfigEntry::Type::Boolean) {
+            generateCMakeConfig = cmakeConfigOpt->asBool();
+        }
+    }
 
-        // Generate binary-specific CMakeLists.txt
-        for (const auto& tmpl : templates.get(TemplateType::Binary)) {
-            if (tmpl.name == "CMakeLists.txt") {
-                processAndWriteTemplate(tmpl, outputDir / "src" / "CMakeLists.txt");
+    // Generate root CMakeLists.txt if enabled
+    if (generateCMakeRoot) {
+        // First look for project-type specific root CMakeLists
+        std::optional<Template> rootTemplate;
+        
+        if (type == ProjectType::Library) {
+            rootTemplate = templates.findByPath("library/root_CMakeLists.txt.template");
+        } else if (type == ProjectType::Binary) {
+            rootTemplate = templates.findByPath("binary/root_CMakeLists.txt.template");
+        }
+        
+        // If no specific template found, use default
+        if (!rootTemplate) {
+            rootTemplate = templates.findByName("root_CMakeLists.txt");
+        }
+        
+        if (rootTemplate) {
+            // Enhance placeholders with proper find_packages if needed
+            std::unordered_map<std::string, std::string> rootValues;
+            
+            processAndWriteTemplate(*rootTemplate, outputDir / "CMakeLists.txt", rootValues);
+        }
+    }
+
+    // Generate project type specific files
+    if (type == ProjectType::Binary) {
+        // Generate binary-specific CMakeLists.txt if enabled
+        if (generateCMakeSrc) {
+            auto binCMakeTemplate = templates.findByPath("binary/src/CMakeLists.txt.template");
+            if (binCMakeTemplate) {
+                // Add additional binary-specific placeholders here if needed
+                std::unordered_map<std::string, std::string> binCMakeValues;
+                
+                processAndWriteTemplate(*binCMakeTemplate, outputDir / "src" / "CMakeLists.txt", binCMakeValues);
+            }
+        }
+        
+        // Generate main.cpp if enabled
+        if (generateMain) {
+            auto mainTemplate = templates.findByName("main.cpp");
+            if (mainTemplate) {
+                processAndWriteTemplate(*mainTemplate, outputDir / "src" / "main.cpp");
             }
         }
     } else if (type == ProjectType::Library) {
-        // Generate library-specific files
-        for (const auto& tmpl : templates.get(TemplateType::Library)) {
-            if (tmpl.name == "CMakeLists.txt") {
-                processAndWriteTemplate(tmpl, outputDir / "src" / "CMakeLists.txt");
+        // Generate library-specific CMakeLists.txt if enabled
+        if (generateCMakeSrc) {
+            auto libCMakeTemplate = templates.findByPath("library/src/CMakeLists.txt.template");
+            if (libCMakeTemplate) {
+                // Generate library-specific supplemental values
+                std::unordered_map<std::string, std::string> libCMakeValues;
+                
+                // Generate source files list based on project name
+                auto projectName = configParser->getEntry(ConfigGroup::ProjectInfo, "name");
+                if (projectName && projectName->type == ConfigEntry::Type::String) {
+                    libCMakeValues["SOURCE_FILES"] = "    " + projectName->asString() + ".cpp";
+                    
+                    // Also generate module file references if modules are enabled
+                    auto modulesIter = configParser->getGroup(ConfigGroup::Build).find("use_modules");
+                    bool modulesEnabled = false;
+                    
+                    if (modulesIter != configParser->getGroup(ConfigGroup::Build).end()) {
+                        if (modulesIter->second.type == ConfigEntry::Type::Boolean) {
+                            modulesEnabled = modulesIter->second.asBool();
+                        } else if (modulesIter->second.type == ConfigEntry::Type::String) {
+                            modulesEnabled = modulesIter->second.asString() == "true" || 
+                                           modulesIter->second.asString() == "ON" ||
+                                           modulesIter->second.asString() == "on" ||
+                                           modulesIter->second.asString() == "1";
+                        }
+                    }
+                    
+                    if (modulesEnabled) {
+                        libCMakeValues["MODULE_FILES"] = "    " + projectName->asString() + ".cppm";
+                    }
+                }
+                
+                processAndWriteTemplate(*libCMakeTemplate, outputDir / "src" / "CMakeLists.txt", libCMakeValues);
             }
         }
 
         // Handle module template if C++20 modules are enabled
         auto buildOptions = configParser->getGroup(ConfigGroup::Build);
-        auto modulesIter = buildOptions.find("modules");
-        bool modulesEnabled = modulesIter != buildOptions.end() && 
-                             modulesIter->second.type == ConfigEntry::Type::Boolean &&
-                             modulesIter->second.asBool();
+        auto modulesIter = buildOptions.find("use_modules");
+        bool modulesEnabled = false;
+        
+        // Check if modules are enabled in build config
+        if (modulesIter != buildOptions.end()) {
+            if (modulesIter->second.type == ConfigEntry::Type::Boolean) {
+                modulesEnabled = modulesIter->second.asBool();
+            } else if (modulesIter->second.type == ConfigEntry::Type::String) {
+                modulesEnabled = modulesIter->second.asString() == "true" || 
+                                modulesIter->second.asString() == "ON" ||
+                                modulesIter->second.asString() == "on" ||
+                                modulesIter->second.asString() == "1";
+            }
+        }
 
+        // Generate module file if modules are enabled
         if (modulesEnabled) {
             auto moduleTemplate = templates.findByName("module.cppm");
             if (moduleTemplate) {
@@ -141,11 +228,13 @@ void ProjectGenerator::generateProjectFiles() {
             }
         }
     }
-
-    // Generate config.cmake.in
-    auto configTemplate = templates.findByName("config.cmake.in");
-    if (configTemplate) {
-        processAndWriteTemplate(*configTemplate, outputDir / "cmake" / "config.cmake.in");
+    
+    // Generate cmake config file if enabled
+    if (generateCMakeConfig) {
+        auto configTemplate = templates.findByName("config.cmake.in");
+        if (configTemplate) {
+            processAndWriteTemplate(*configTemplate, outputDir / "cmake" / "config.cmake.in");
+        }
     }
 }
 
@@ -245,20 +334,39 @@ void ProjectGenerator::generatePackageManagerFiles() {
 }
 
 ProjectType ProjectGenerator::getProjectType() const {
+    // First check type from ProjectInfo.type
     auto typeEntry = configParser->getEntry(ConfigGroup::ProjectInfo, "type");
-    if (!typeEntry || typeEntry->type != ConfigEntry::Type::String) {
-        // Default to binary if not specified
-        return ProjectType::Binary;
+    if (typeEntry && typeEntry->type == ConfigEntry::Type::String) {
+        std::string type = typeEntry->asString();
+        if (type == "library") {
+            return ProjectType::Library;
+        } else if (type == "header_only") {
+            return ProjectType::HeaderOnly;
+        } else if (type == "binary") {
+            return ProjectType::Binary;
+        }
     }
-
-    std::string type = typeEntry->asString();
-    if (type == "library") {
-        return ProjectType::Library;
-    } else if (type == "header_only") {
-        return ProjectType::HeaderOnly;
-    } else {
-        return ProjectType::Binary;
+    
+    // Then check project.type.type (from the TOML structure)
+    auto projectGroup = configParser->getGroup(ConfigGroup::ProjectInfo);
+    auto typeGroupIt = projectGroup.find("type");
+    if (typeGroupIt != projectGroup.end() && typeGroupIt->second.type == ConfigEntry::Type::Dictionary) {
+        const auto& typeDict = typeGroupIt->second.asDict();
+        auto typeIt = typeDict.find("type");
+        if (typeIt != typeDict.end() && typeIt->second.type == ConfigEntry::Type::String) {
+            std::string type = typeIt->second.asString();
+            if (type == "library") {
+                return ProjectType::Library;
+            } else if (type == "header_only") {
+                return ProjectType::HeaderOnly;
+            } else if (type == "binary") {
+                return ProjectType::Binary;
+            }
+        }
     }
+    
+    // Default to binary if nothing specified
+    return ProjectType::Binary;
 }
 
 void ProjectGenerator::processAndWriteTemplate(

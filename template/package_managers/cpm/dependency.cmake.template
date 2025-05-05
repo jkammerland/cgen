@@ -1,3 +1,6 @@
-include(cmake/get_cpm.cmake)
-# CPM.cmake dependencies
-{CPM_DEPENDENCIES}
+CPMAddPackage(
+  NAME @DEPENDENCY_NAME@
+  VERSION @DEPENDENCY_VERSION@
+  @DEPENDENCY_GIT@
+  @DEPENDENCY_URL@
+)

@@ -20,16 +20,13 @@ target_include_directories(${PROJECT_NAME}
 # Link dependencies
 target_link_libraries(${PROJECT_NAME}
   PRIVATE
-{DEPENDENCIES}
+    fmt::fmt
 )
 
-{CMAKE_OPTIONS}
-
-# Add compile definitions
-{CMAKE_DEFINES}
+@CMAKE_OPTIONS@
+@CMAKE_DEFINES@
 
 # Installation
 install(TARGETS ${PROJECT_NAME}
-  EXPORT ${PROJECT_NAME}-targets
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )

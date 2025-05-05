@@ -1,2 +1,2 @@
-# Find required packages
-{FIND_PACKAGES}
+# Find required dependencies
+@FIND_PACKAGES@
