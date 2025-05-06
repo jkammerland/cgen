@@ -7,11 +7,6 @@ add_library(${PROJECT_NAME} STATIC)
 # Add source files
 target_sources(${PROJECT_NAME}
   PRIVATE
-    toml-parser.cpp
-    generator.cpp
-    template_manager.cpp
-    config_parser.cpp
-    project_generator.cpp
     placeholder_processor.cpp
 )
 

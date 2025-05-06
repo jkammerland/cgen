@@ -65,3 +65,8 @@ set(CPACK_PACKAGE_INSTALL_DIRECTORY "cgen")
 set(CPACK_PACKAGE_CONTACT "Your Email")
 
 include(CPack)
+
+option(CGEN_BUILD_TESTS "Build tests" OFF)
+if (CGEN_BUILD_TESTS)
+  add_subdirectory(tests)
+endif()

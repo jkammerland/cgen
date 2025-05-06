@@ -9,9 +9,9 @@ namespace cgen {
 
 // Different placeholder format styles
 enum class PlaceholderStyle {
-    Braces,       // {PLACEHOLDER}
-    Dollar,       // $PLACEHOLDER
-    DollarBraces, // ${PLACEHOLDER}
+    // Braces,       // {PLACEHOLDER}  # Hard to parse correctly
+    // Dollar,       // $PLACEHOLDER   # Conflicts with bash
+    // DollarBraces, // ${PLACEHOLDER} # Conflicts with cmake
     AtSign,       // @PLACEHOLDER@
     HashTag,      // #PLACEHOLDER#
     Percent       // %PLACEHOLDER%
@@ -20,13 +20,7 @@ enum class PlaceholderStyle {
 class PlaceholderProcessor {
 public:
     // Create processor with default style or specified style
-    explicit PlaceholderProcessor(PlaceholderStyle style = PlaceholderStyle::Braces);
-    
-    // Set the placeholder style
-    void setStyle(PlaceholderStyle style);
-    
-    // Add additional styles to recognize
-    void addStyle(PlaceholderStyle style);
+    explicit PlaceholderProcessor(std::initializer_list<PlaceholderStyle> styles = {PlaceholderStyle::AtSign});
     
     // Extract all placeholders from a template
     std::vector<std::string> extractPlaceholders(const std::string& content) const;
@@ -38,8 +32,7 @@ public:
     ) const;
 
 private:
-    PlaceholderStyle primaryStyle;
-    std::vector<PlaceholderStyle> additionalStyles;
+    std::vector<PlaceholderStyle> allStyles_;
     
     // Build regex for a specific style
     std::regex buildRegexForStyle(PlaceholderStyle style) const;
