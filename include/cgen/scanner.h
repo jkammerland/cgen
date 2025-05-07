@@ -69,6 +69,35 @@ struct Directory {
 std::expected<std::set<std::shared_ptr<Directory>, CompareDirectoryByName<Directory>>, scan_status>
 scan_template_directory(const std::string &template_name, const std::string &templates_base_dir);
 
+/**
+ * @brief Lists template directories based on the provided configuration result.
+ *
+ * This function determines the location of the templates directory either from
+ * the provided `result` object or defaults to `"templates/"`. It then checks if
+ * the directory exists and is a valid directory. If so, it scans the directory
+ * and returns a list of subdirectory names that do not start with an underscore.
+ *
+ * @tparam T The type of the `result` object, expected to support key-value access
+ *           (e.g., a CXXParseOpts object with `count()` and `as<std::string>()` methods).
+ * @param result A configuration object that may contain a `"templates"` key
+ *               specifying the path to the templates directory.
+ *
+ * @return A `std::expected` containing a vector of template directory names on
+ *         success, or a `scan_status::error` on failure.
+ *
+ * @throws std::exception if an error occurs while reading the directory.
+ *
+ * @note This function relies on the filesystem library (`<filesystem>`) and
+ *       assumes the use of a CXXParseOpts-like object for `result`.
+ *
+ * @details
+ * - If `result["templates"]` is provided and valid, that path is used.
+ * - Otherwise, the default `"templates/"` is used.
+ * - Only directories that are not prefixed with an underscore are included in
+ *   the result.
+ * - Errors such as missing directories or invalid paths are reported via
+ *   `std::unexpected` and printed to stderr.
+ */
 template <typename T> std::expected<std::vector<std::string>, scan_status> list_templates(const T &result) {
     std::string templates_dir;
 
