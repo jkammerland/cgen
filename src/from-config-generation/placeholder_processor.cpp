@@ -4,23 +4,8 @@
 
 namespace cgen {
 
-PlaceholderProcessor::PlaceholderProcessor(PlaceholderStyle style)
-    : primaryStyle(style) {
-}
-
-void PlaceholderProcessor::setStyle(PlaceholderStyle style) {
-    primaryStyle = style;
-}
-
-void PlaceholderProcessor::addStyle(PlaceholderStyle style) {
-    // Don't add if it's already the primary style
-    if (style != primaryStyle) {
-        // Check if the style is already in additionalStyles
-        auto it = std::find(additionalStyles.begin(), additionalStyles.end(), style);
-        if (it == additionalStyles.end()) {
-            additionalStyles.push_back(style);
-        }
-    }
+PlaceholderProcessor::PlaceholderProcessor(std::initializer_list<PlaceholderStyle> styles)
+    : allStyles_(styles.begin(), styles.end()) {
 }
 
 std::vector<std::string> PlaceholderProcessor::extractPlaceholders(const std::string& content) const {
@@ -108,12 +93,6 @@ std::regex PlaceholderProcessor::buildRegexForStyle(PlaceholderStyle style) cons
 
 std::pair<std::string, std::string> PlaceholderProcessor::getStyleDelimiters(PlaceholderStyle style) const {
     switch (style) {
-        case PlaceholderStyle::Braces:
-            return {"{", "}"};
-        case PlaceholderStyle::Dollar:
-            return {"$", ""};
-        case PlaceholderStyle::DollarBraces:
-            return {"${", "}"};
         case PlaceholderStyle::AtSign:
             return {"@", "@"};
         case PlaceholderStyle::HashTag:
@@ -126,17 +105,11 @@ std::pair<std::string, std::string> PlaceholderProcessor::getStyleDelimiters(Pla
 }
 
 std::regex PlaceholderProcessor::buildCombinedRegex() const {
-    // Start with primary style regex
-    std::vector<PlaceholderStyle> allStyles = {primaryStyle};
-    
-    // Add additional styles
-    allStyles.insert(allStyles.end(), additionalStyles.begin(), additionalStyles.end());
-    
     // Build pattern alternation for all styles
     std::stringstream pattern;
     
-    for (size_t i = 0; i < allStyles.size(); ++i) {
-        auto [prefix, suffix] = getStyleDelimiters(allStyles[i]);
+    for (size_t i = 0; i < allStyles_.size(); ++i) {
+        auto [prefix, suffix] = getStyleDelimiters(allStyles_[i]);
         
         // Escape prefix and suffix for regex
         auto escapeRegex = [](const std::string& str) {
@@ -152,7 +125,7 @@ std::regex PlaceholderProcessor::buildCombinedRegex() const {
         
         pattern << escapeRegex(prefix) << "([A-Z0-9_]+)" << escapeRegex(suffix);
         
-        if (i < allStyles.size() - 1) {
+        if (i < allStyles_.size() - 1) {
             pattern << "|";
         }
     }
@@ -162,7 +135,7 @@ std::regex PlaceholderProcessor::buildCombinedRegex() const {
 
 std::string PlaceholderProcessor::extractPlaceholderName(const std::string& match) const {
     // Try each style to extract the placeholder name
-    for (auto style : {primaryStyle}) {
+    for (auto style : allStyles_) {
         auto [prefix, suffix] = getStyleDelimiters(style);
         
         if (match.size() >= prefix.size() + suffix.size() && 
@@ -171,25 +144,6 @@ std::string PlaceholderProcessor::extractPlaceholderName(const std::string& matc
             
             return match.substr(prefix.size(), match.size() - prefix.size() - suffix.size());
         }
-    }
-    
-    // Try additional styles
-    for (auto style : additionalStyles) {
-        auto [prefix, suffix] = getStyleDelimiters(style);
-        
-        if (match.size() >= prefix.size() + suffix.size() && 
-            match.substr(0, prefix.size()) == prefix && 
-            match.substr(match.size() - suffix.size()) == suffix) {
-            
-            return match.substr(prefix.size(), match.size() - prefix.size() - suffix.size());
-        }
-    }
-    
-    // If no style matches, try regex extraction as fallback
-    std::regex extractRegex("([A-Z0-9_]+)");
-    std::smatch sm;
-    if (std::regex_search(match, sm, extractRegex)) {
-        return sm[1].str();
     }
     
     return "";

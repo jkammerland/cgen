@@ -1,6 +1,0 @@
-# Set up CPM package manager
-include(cmake/get_cpm.cmake)
-get_cpm("0.40.8" "78ba32abdf798bc616bab7c73aac32a17bbd7b06ad9e26a6add69de8f3ae4791")
-
-# Add dependencies using CPM
-@CPM_DEPENDENCIES@
