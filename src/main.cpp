@@ -1,3 +1,6 @@
+#include "cgen/scanner.h"
+
+#include <algorithm>
 #include <cgen/placeholder_processor.h>
 #include <cxxopts.hpp>
 #include <expected>
@@ -7,48 +10,7 @@
 #include <vector>
 
 namespace fs = std::filesystem;
-
-struct Directory {
-    std::string              name;
-    fs::path                 path;
-    std::vector<std::string> files;
-
-    // DO NOT HANDLE LOOPS FROM SYMBOLIC LINKS
-    std::vector<std::shared_ptr<Directory>> directories;
-};
-
-template <typename T> std::expected<std::vector<std::string>, int> list_templates(const T &result) {
-    std::string templates_dir;
-
-    // Determine the templates directory
-    if (result["templates"].count() > 0) {
-        templates_dir = result["templates"].template as<std::string>();
-    } else {
-        templates_dir = "templates/";
-    }
-
-    // Check if the directory exists and is a directory
-    if (!fs::exists(templates_dir) || !fs::is_directory(templates_dir)) {
-        fmt::print(stderr, "Error: Templates directory not found: {}\n", templates_dir);
-        return std::unexpected(1);
-    }
-
-    // Scan the templates directory
-    std::vector<std::string> templates;
-    try {
-        for (const auto &entry : fs::directory_iterator(templates_dir)) {
-            bool is_template = !entry.path().filename().string().starts_with("_");
-            if (entry.is_directory() && is_template) {
-                templates.push_back(entry.path().filename().string());
-            }
-        }
-    } catch (const std::exception &e) {
-        fmt::print(stderr, "Error reading templates directory: {}\n", e.what());
-        return std::unexpected(1);
-    }
-
-    return templates;
-}
+using namespace cgen;
 
 int main(int argc, char *argv[]) {
     try {
@@ -76,7 +38,7 @@ int main(int argc, char *argv[]) {
                 return 0;
 
             } else {
-                return result_or.error();
+                return static_cast<int>(result_or.error());
             }
         }
         if (result["gui"].as<bool>()) {
